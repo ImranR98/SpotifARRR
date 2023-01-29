@@ -17,7 +17,7 @@ node app.js "$tempdir"
 cd ..
 
 for idfile in "$tempdir"/*; do
-    ./spotdl-download.sh "$idfile" ~/Main/"External Media"/Music/Playlists ~/Main/"External Media"/Music/Songs 'docker run --rm -v $(pwd):/music --network=host spotdl/spotify-downloader'
+    ./spotdl-download.sh "$idfile" ~/Main/"External Media"/Music/Songs ~/Main/"External Media"/Music/Playlists 'docker run --rm -v $(pwd):/music --network=host spotdl/spotify-downloader'
 done
 
 cd "$here"
