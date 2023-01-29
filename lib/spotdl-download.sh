@@ -32,6 +32,8 @@ tempdir="$(mktemp -d)"
 here="$(pwd)"
 cd "$tempdir"
 
+echo "Processing file: "$ids_file""
+
 # Download songs
 
 echo 'Step 1: Downloading songs'
