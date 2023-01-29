@@ -36,25 +36,30 @@ cd "$tempdir"
 
 echo 'Step 1: Downloading songs'
 while read id; do
+    tempdir="$(mktemp -d)"
+    cd "$tempdir"
     existingfile="$(ls "$songs_dir" | grep "$id".mp3)"
     if [ -z "$existingfile" ]; then
         result="$(eval ""$spotdl_command" download https://open.spotify.com/track/"$id"" | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]//g")"
-        songname="$(echo "$result" | grep 'Downloaded' | awk -F'"' '{print $2}')"
-        if [ -n "$songname" ]; then
-            mv "$songname".mp3 "$songs_dir"/"$songname"" - ""$id".mp3
-            filename="$songname".mp3
-            echo "Done: "$filename""
+        songfile="$(ls *.mp3)"
+        if [ -n "$songfile" ]; then
+            mv "$songfile" "$songs_dir"/"${songfile%.*}"" - ""$id".mp3
+            echo "Done: "$songfile""
         else
             echo "$result" >&2
         fi
     else
         echo "Skipping "$id", file exists..."
     fi
+    cd "$here"
+    rm -rf "$tempdir"
 done <"$ids_file"
 
 # Rebuild playlist
 
 echo 'Step 2: Building playlist'
+tempdir="$(mktemp -d)"
+cd "$tempdir"
 playlist_file="${ids_file%.*}".m3u
 existing_playlist="$playlists_dir"/"$(basename "$playlist_file")"
 echo '#EXTM3U' >"$playlist_file"
@@ -83,8 +88,5 @@ while read id; do
     fi
 done <"$ids_file"
 mv "$playlist_file" "$playlists_dir"
-
-# Clean up
-
 cd "$here"
 rm -rf "$tempdir"
