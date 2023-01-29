@@ -38,7 +38,7 @@ echo 'Step 1: Downloading songs'
 while read id; do
     existingfile="$(ls "$songs_dir" | grep "$id".mp3)"
     if [ -z "$existingfile" ]; then
-        result="$(eval ""$spotdl_command" download https://open.spotify.com/track/"$id"")"
+        result="$(eval ""$spotdl_command" download https://open.spotify.com/track/"$id"" | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]//g")"
         songname="$(echo "$result" | grep 'Downloaded' | awk -F'"' '{print $2}')"
         if [ -n "$songname" ]; then
             mv "$songname".mp3 "$songs_dir"/"$songname"" - ""$id".mp3
