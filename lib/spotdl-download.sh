@@ -81,7 +81,7 @@ while read id; do
             if [ -z "$size" ]; then size='12345'; fi
             if [ -z "$artist" ] || [ -z "$title" ]; then artisttitle="${file%.*}"; fi
             linea="#EXTINF:""$size"",""$artisttitle"
-            lineb="$songs_dir""$file"
+            lineb="$songs_dir"/"$file"
         fi
         echo "$linea" >>"$playlist_file"
         echo "$lineb" >>"$playlist_file"
