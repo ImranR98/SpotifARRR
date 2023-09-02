@@ -20,10 +20,10 @@ fi
 # Ensure env. vars. exist
 if [ -f "$SCRIPT_DIR"/.env ]; then
     if [ -z "$CLIENT_ID" ]; then
-        CLIENT_ID="$(cat .env | grep 'CLIENT_ID' | awk -F= '{print $2}')"
+        CLIENT_ID="$(cat "$SCRIPT_DIR"/.env | grep 'CLIENT_ID' | awk -F= '{print $2}')"
     fi
     if [ -z "$CLIENT_SECRET" ]; then
-        CLIENT_SECRET="$(cat .env | grep 'CLIENT_SECRET' | awk -F= '{print $2}')"
+        CLIENT_SECRET="$(cat "$SCRIPT_DIR"/.env | grep 'CLIENT_SECRET' | awk -F= '{print $2}')"
     fi
 fi
 if [ -z "$CLIENT_ID" ]; then
@@ -42,6 +42,7 @@ onExit() {
 trap 'onExit' EXIT
 
 # Get all user playlists (including private ones)
+cd "$SCRIPT_DIR"
 PLAYLISTS="$(node "$SCRIPT_DIR"/get_all_playlist_ids.js)"
 NODE_EXIT_CODE="$?"
 if [ "$NODE_EXIT_CODE" != 0 ]; then
