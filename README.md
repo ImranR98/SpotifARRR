@@ -9,6 +9,9 @@ A separate directory is created for each playlist, along with an M3U playlist fi
 ## Usage
 
 1. Ensure Node.js and SpotDL are installed.
+   - Note: As of this writing, you need to install the beta version of SpotDL. On Fedora 39, you will need to ignore Python requirements:
+   
+     `pip install -U --force --ignore-requires-python https://codeload.github.com/spotDL/spotify-downloader/zip/master`
 2. Copy `template.env` to `.env` and fill out the `CLIENT_ID` and `CLIENT_SECRET` with your own Spotify client details.
    - Set the redirect URI to `http://127.0.0.1:8080/` (including trailing slash).
 3. Run `./SpotifARRR.sh <path to destination directory>`
