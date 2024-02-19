@@ -49,7 +49,7 @@ if [ "$NODE_EXIT_CODE" != 0 ]; then
     exit "$NODE_EXIT_CODE"
 fi
 
-# Download each playlist into its own directory with an accompanying playlist file
+# Download each playlist into the target directory (existing songs are skipped) and generate a corresponding list of songs in a text file ('M3U')
 mkdir -p "$DEST_DIR"
 cd "$DEST_DIR"
 
@@ -57,8 +57,22 @@ set -e
 while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
-    mkdir -p "$NAME"
-    cd "$NAME"
-    spotdl sync https://open.spotify.com/playlist/"$ID" --client-id "$CLIENT_ID" --client-secret "$CLIENT_SECRET" --user-auth --m3u "$NAME".m3u --save-file "$NAME".spotdl
-    cd ..
+    if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
+        spotdl download https://open.spotify.com/playlist/"$ID" --client-id "$CLIENT_ID" --client-secret "$CLIENT_SECRET" --user-auth --m3u "$NAME".m3u --save-file "$NAME".spotdl
+    fi
 done <<<"$PLAYLISTS"
+
+# Fix the formatting of the M3U files (spotdl just creates a list of file names and calls it M3U)
+for file in "$DEST_DIR"/*.m3u; do
+    node "$SCRIPT_DIR"/fixSpotdlM3U.js "$file"
+done
+
+# Remove any dong files that don't appear in at least one playlist
+echo ""
+ALL_SONGS="$(cat *.m3u | grep '^\./')"
+for file in *.mp3; do
+    if [ -z "$(echo "$ALL_SONGS" | grep "^\./$file")" ]; then
+        echo "Deleting unlisted song: $file"
+        rm "$file"
+    fi
+done

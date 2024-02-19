@@ -14,6 +14,7 @@ A separate directory is created for each playlist, along with an M3U playlist fi
      `pip install -U --force --ignore-requires-python https://codeload.github.com/spotDL/spotify-downloader/zip/master`
 2. Copy `template.env` to `.env` and fill out the `CLIENT_ID` and `CLIENT_SECRET` with your own Spotify client details.
    - Set the redirect URI to `http://127.0.0.1:8080/` (including trailing slash).
-3. Run `./SpotifARRR.sh <path to destination directory>`
+3. Optionally create an `IGNORED_PLAYLISTS.txt` file in the script directory with a list of playlists to ignore.
+4. Run `./SpotifARRR.sh <path to destination directory>`
 
 The script can be run regularly as it makes use of SpotDL's `sync` command.
