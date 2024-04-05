@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Ensure dependencies
-for dep in node spotdl; do
+for dep in node zotify; do
     if [ -z "$(which "$dep")" ]; then
         echo "Dependency not found: "$dep"" >&2
         exit 1
@@ -9,7 +9,6 @@ for dep in node spotdl; do
 done
 
 # Prepare directories
-TEMP_DIR="$(mktemp -d)"
 HERE="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 DEST_DIR="$1"
@@ -58,21 +57,40 @@ while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
-        spotdl download https://open.spotify.com/playlist/"$ID" --client-id "$CLIENT_ID" --client-secret "$CLIENT_SECRET" --user-auth --m3u "$NAME".m3u --save-file "$NAME".spotdl
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" --root-path "$DEST_DIR" --output '{artist} - {song_name}.{ext}' --print-downloads=True | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1' )"
+        PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
+        echo "#EXTM3U" >"$PLAYLIST_FILE"
+        SKIP_REGEX="^SKIPPING.*SONG ALREADY EXISTS"
+        DL_REGEX="^Downloaded"
+        ID=1
+        while read -r line; do
+            SONG_NAME=""
+            if [[ "$line" =~ $SKIP_REGEX ]]; then
+                SONG_NAME="$(echo "$(echo "$line" | tail -c +11 | head -c -23)")"
+            elif [[ "$line" =~ $DL_REGEX ]]; then
+                SONG_NAME="$(echo "$line" | tail -c +13 | sed 's/./&\n/g' | awk 'BEGIN {RS=""} {n=split($0, a, "\n"); for(i=1;i<=n;i++) for(j=i+1;j<=n;j++) {str=a[i]; k=1; while(a[i+k]==a[j+k]){str=str a[i+k]; k++}; if(length(str)>length(max)) max=str} } END {print max}')"
+            else
+                continue
+            fi
+            echo "#EXTINF:$ID,$SONG_NAME" >>"$PLAYLIST_FILE"
+            echo "./$SONG_NAME.ogg" >>"$PLAYLIST_FILE"
+            ID=$(( $ID + 1 ))
+        done < <(echo "$ZOTIFY_OUTPUT")
     fi
 done <<<"$PLAYLISTS"
 
-# Fix the formatting of the M3U files (spotdl just creates a list of file names and calls it M3U)
-for file in "$DEST_DIR"/*.m3u; do
-    node "$SCRIPT_DIR"/fixSpotdlM3U.js "$file"
-done
-
-# Remove any dong files that don't appear in at least one playlist
+# Remove any song files that don't appear in at least one playlist
 echo ""
 ALL_SONGS="$(cat *.m3u | grep '^\./')"
-for file in *.mp3; do
+for file in *.ogg; do
     if [ -z "$(echo "$ALL_SONGS" | grep "^\./$file")" ]; then
-        echo "Deleting unlisted song: $file"
-        rm "$file"
+        if [ -f "$file" ]; then
+            echo "Deleting unlisted song: $file"
+            rm "$file"
+            if [ -f "${file%.*}.lrc" ]; then
+                rm "${file%.*}.lrc"
+            fi
+        fi
     fi
 done

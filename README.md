@@ -1,20 +1,24 @@
 # SpotifARRR
 
-Tool to automate the use of [spotify-downloader](https://github.com/spotDL/spotify-downloader) and enable it to work with private playlists.
+Download all your Spotify playlists.
 
-For some reason, SpotDL does not currently seem to grab a user's private playlists when the `all-user-playlists` command is used, even when the user is logged in. When you manually provide the playlist ID, however, it is able to download tracks. This script grabs your private playlists independently then uses SpotDL to download them.
+This script is thin wrapper around the incredible [Zotify](https://github.com/zotify-dev/zotify) app, which does all the heavy lifting. Zotify is currently missing 2 features that this script helps with:
+- Automatically get a URL list of all of a user's playlists (as opposed to specifying them manually).
+- [Generate M3U playlist files for each playlist downloaded.](https://github.com/zotify-dev/zotify/issues/65)
 
-A separate directory is created for each playlist, along with an M3U playlist file (note this does lead to duplicate files for songs that appear in multiple playlists).
+Songs from all playlists are downloaded into a single common directory, along with an M3U file for each playlist. Existing songs are not re-downloaded. Any existing songs in that are no longer found in any playlist are deleted.
+
+Since this is meant as a quick workaround until Zotify adds the above features, it isn't the most user-friendly. Note that:
+- Zotify authenticates with your regular Spotify username/password, but this repo needs Spotify API credentials instead. This means you'll have to setup the Spotify API and authenticate twice (both methods).
+- Part of the script is written in Bash, so will not work on [Windows](https://www.reddit.com/r/WindowsSucks/).
 
 ## Usage
 
-1. Ensure Node.js and SpotDL are installed.
-   - Note: As of this writing, you need to install the beta version of SpotDL. On Fedora 39, you will need to ignore Python requirements:
-   
-     `pip install -U --force --ignore-requires-python https://codeload.github.com/spotDL/spotify-downloader/zip/master`
+1. Ensure [Node.js](https://nodejs.org) and [Zotify](https://github.com/zotify-dev/zotify) are installed.
 2. Copy `template.env` to `.env` and fill out the `CLIENT_ID` and `CLIENT_SECRET` with your own Spotify client details.
    - Set the redirect URI to `http://127.0.0.1:8080/` (including trailing slash).
-3. Optionally create an `IGNORED_PLAYLISTS.txt` file in the script directory with a list of playlists to ignore.
+   - You could set the environment variables in some other way if you prefer.
+3. Optionally, create an `IGNORED_PLAYLISTS.txt` file in the script directory with a list of playlist names to ignore.
 4. Run `./SpotifARRR.sh <path to destination directory>`
 
 The script can be run regularly as it makes use of SpotDL's `sync` command.
