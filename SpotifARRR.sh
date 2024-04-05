@@ -84,7 +84,8 @@ done <<<"$PLAYLISTS"
 echo ""
 ALL_SONGS="$(cat *.m3u | grep '^\./')"
 for file in *.ogg; do
-    if [ -z "$(echo "$ALL_SONGS" | grep "^\./$file")" ]; then
+    regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<< "$file")"
+    if [ -z "$(echo "$ALL_SONGS" | grep -E "^\./$regex_escaped_file")" ]; then
         if [ -f "$file" ]; then
             echo "Deleting unlisted song: $file"
             rm "$file"
