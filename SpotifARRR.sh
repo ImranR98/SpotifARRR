@@ -58,7 +58,7 @@ while IFS= read -r LINE; do
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
         ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" --root-path "$DEST_DIR" --output '{artist} - {song_name}.{ext}' --print-downloads=True | tee /dev/tty)"
-        ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1' )"
+        ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
         SKIP_REGEX="^SKIPPING.*SONG ALREADY EXISTS"
@@ -75,23 +75,25 @@ while IFS= read -r LINE; do
             fi
             echo "#EXTINF:$ID,$SONG_NAME" >>"$PLAYLIST_FILE"
             echo "./$SONG_NAME.ogg" >>"$PLAYLIST_FILE"
-            ID=$(( $ID + 1 ))
+            ID=$(($ID + 1))
         done < <(echo "$ZOTIFY_OUTPUT")
     fi
 done <<<"$PLAYLISTS"
 
 # Remove any song files that don't appear in at least one playlist
-echo ""
-ALL_SONGS="$(cat *.m3u | grep '^\./')"
-for file in *.ogg; do
-    regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<< "$file")"
-    if [ -z "$(echo "$ALL_SONGS" | grep -E "^\./$regex_escaped_file")" ]; then
-        if [ -f "$file" ]; then
-            echo "Deleting unlisted song: $file"
-            rm "$file"
-            if [ -f "${file%.*}.lrc" ]; then
-                rm "${file%.*}.lrc"
+if [ -z "$NO_DELETE_UNLISTED" ]; then
+    echo ""
+    ALL_SONGS="$(cat *.m3u | grep '^\./')"
+    for file in *.ogg; do
+        regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<<"$file")"
+        if [ -z "$(echo "$ALL_SONGS" | grep -E "^\./$regex_escaped_file")" ]; then
+            if [ -f "$file" ]; then
+                echo "Deleting unlisted song: $file"
+                rm "$file"
+                if [ -f "${file%.*}.lrc" ]; then
+                    rm "${file%.*}.lrc"
+                fi
             fi
         fi
-    fi
-done
+    done
+fi
