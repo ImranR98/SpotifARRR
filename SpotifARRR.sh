@@ -57,7 +57,7 @@ while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
-        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" --retry-attempts 30 --root-path "$DEST_DIR" --output '{artist} - {song_name}.{ext}' --print-downloads=True | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" --retry-attempts 5 --root-path "$DEST_DIR" --output '{artist} - {song_name}.{ext}' --print-downloads=True | tee /dev/tty)"
         ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
