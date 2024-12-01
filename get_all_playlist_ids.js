@@ -18,7 +18,7 @@ const main = async () => {
         }
         return await api.apiRequestGetArray(path, accessToken.access_token)
     }
-    const myPlaylists = await requestArray('/me/playlists')
+    const myPlaylists = (await requestArray('/me/playlists')).filter(n => !!n)
     for (var i = 0; i < myPlaylists.length; i++) {
         // myPlaylists[i].tracks = await requestArray(`/playlists/${myPlaylists[i].id}/tracks`)  
         console.log(`${myPlaylists[i].id} ${myPlaylists[i].name}`)
