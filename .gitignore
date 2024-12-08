@@ -1,3 +1,4 @@
 node_modules/
 .env
 IGNORED_PLAYLISTS.txt
+ADDITIONAL_PLAYLISTS.txt

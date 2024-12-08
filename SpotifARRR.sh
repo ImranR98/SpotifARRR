@@ -43,6 +43,11 @@ trap 'onExit' EXIT
 # Get all user playlists (including private ones)
 cd "$SCRIPT_DIR"
 PLAYLISTS="$(node "$SCRIPT_DIR"/get_all_playlist_ids.js)"
+if [ -f "$SCRIPT_DIR"/ADDITIONAL_PLAYLISTS.txt ]; then
+    PLAYLISTS="$PLAYLISTS
+$(cat "$SCRIPT_DIR"/ADDITIONAL_PLAYLISTS.txt)"
+fi
+echo "$PLAYLISTS"
 NODE_EXIT_CODE="$?"
 if [ "$NODE_EXIT_CODE" != 0 ]; then
     exit "$NODE_EXIT_CODE"
