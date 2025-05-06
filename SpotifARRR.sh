@@ -62,19 +62,19 @@ while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
-        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" --retry-attempts 5 --root-path "$DEST_DIR" --output '{artist} - {song_name}.{ext}' --print-downloads=True | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips | tee /dev/tty)"
         ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
-        SKIP_REGEX="^SKIPPING.*SONG ALREADY EXISTS"
+        SKIP_REGEX="^Skipping \".*\": Previously downloaded"
         DL_REGEX="^Downloaded"
         ID=1
         while read -r line; do
             SONG_NAME=""
             if [[ "$line" =~ $SKIP_REGEX ]]; then
-                SONG_NAME="$(echo "$(echo "$line" | tail -c +11 | head -c -23)")"
+                SONG_NAME="$(echo "$(echo "$line" | tail -c +11 | head -c -40)")"
             elif [[ "$line" =~ $DL_REGEX ]]; then
-                SONG_NAME="$(echo "$line" | tail -c +13 | sed 's/./&\n/g' | awk 'BEGIN {RS=""} {n=split($0, a, "\n"); for(i=1;i<=n;i++) for(j=i+1;j<=n;j++) {str=a[i]; k=1; while(a[i+k]==a[j+k]){str=str a[i+k]; k++}; if(length(str)>length(max)) max=str} } END {print max}')"
+                SONG_NAME="$(echo "$line" | tail -c +12 | awk '{NF--; print}')"
             else
                 continue
             fi
