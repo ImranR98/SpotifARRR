@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -e
 
 # Ensure dependencies
 for dep in node zotify; do
@@ -60,10 +61,10 @@ cd "$DEST_DIR"
 set -e
 while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
-    NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)"
+    NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | awk '{$1=$1};1')"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
-        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file | tee /dev/tty)"
-        ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '### .*### *' | grep --text -Eo '[^#][^ +].*[^ +][^#]' | awk '{$1=$1};1')"
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file 2>&1 | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '^\s*(Skipping|Downloaded).+' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
         SKIP_REGEX="^Skipping \".*\": Previously downloaded"
@@ -72,7 +73,7 @@ while IFS= read -r LINE; do
         while read -r line; do
             SONG_NAME=""
             if [[ "$line" =~ $SKIP_REGEX ]]; then
-                SONG_NAME="$(echo "$(echo "$line" | tail -c +11 | head -c -40)")"
+                SONG_NAME="$(echo "$line" | tail -c +11 | head -c -25)"
             elif [[ "$line" =~ $DL_REGEX ]]; then
                 SONG_NAME="$(echo "$line" | tail -c +12 | awk '{NF--; print}')"
             else
@@ -85,20 +86,36 @@ while IFS= read -r LINE; do
     fi
 done <<<"$PLAYLISTS"
 
-# Remove any song files that don't appear in at least one playlist
-if [ -z "$NO_DELETE_UNLISTED" ]; then
-    echo ""
-    ALL_SONGS="$(cat *.m3u | grep '^\./')"
-    for file in *.ogg; do
-        regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<<"$file")"
-        if [ -z "$(echo "$ALL_SONGS" | grep -E "^\./$regex_escaped_file")" ]; then
-            if [ -f "$file" ]; then
+# For any song files that don't appear in at least one playlist, add it to an unsorted playlist or remove it
+echo ""
+UNSORTED_PLAYLIST="$DEST_DIR"/SpotifARRR_Unsorted.m3u
+echo "#EXTM3U" >"$UNSORTED_PLAYLIST"
+ALL_SONGS="$(cat *.m3u | grep --text '^\./')"
+ID=1
+for file in *.ogg; do
+    regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<<"$file")"
+    if [ -z "$(echo "$ALL_SONGS" | grep -E "^\./$regex_escaped_file")" ]; then
+        if [ -f "$file" ]; then
+            if [ -z "$NO_DELETE_UNLISTED" ]; then
                 echo "Deleting unlisted song: $file"
                 rm "$file"
                 if [ -f "${file%.*}.lrc" ]; then
                     rm "${file%.*}.lrc"
                 fi
+            else
+                echo "#EXTINF:$ID,${file%.*}" >>"$UNSORTED_PLAYLIST"
+                echo "./$file" >>"$UNSORTED_PLAYLIST"
+                ID=$(($ID + 1))
             fi
         fi
+    fi
+done
+
+# Verify that there are no non-existent files referenced in any playlists
+for playlist in *.m3u; do
+    cat "$playlist" | grep --text '^\./' | while read song; do
+        if [ ! -f "$song" ]; then
+            echo "NON-EXISTENT SONG: $song (IN PLAYLIST: $playlist)"
+        fi
     done
-fi
+done
