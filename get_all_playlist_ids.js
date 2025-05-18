@@ -8,7 +8,7 @@ const clientCreds = env.getClientCreds()
 const redirect_uri = `http://127.0.0.1:${PORT}/`
 
 const main = async () => {
-    open(api.generateAuthURL(clientCreds.id, redirect_uri))
+    open.default(api.generateAuthURL(clientCreds.id, redirect_uri))
     const authCode = await api.waitForAuthCode(PORT)
     const getAccessToken = async () => await api.getAccessToken(authCode, redirect_uri, clientCreds.id, clientCreds.secret)
     var accessToken = await getAccessToken()

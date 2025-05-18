@@ -63,7 +63,7 @@ while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | awk '{$1=$1};1')"
     if [ ! -f "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt ] || [ -z "$(grep "^$NAME$" "$SCRIPT_DIR"/IGNORED_PLAYLISTS.txt)" ]; then
-        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file 2>&1 | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file --download-real-time 2>&1 | tee /dev/tty)"
         ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '^\s*(Skipping|Downloaded).+' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
@@ -103,6 +103,7 @@ for file in *.ogg; do
                     rm "${file%.*}.lrc"
                 fi
             else
+                echo "Unsorted song: $file"
                 echo "#EXTINF:$ID,${file%.*}" >>"$UNSORTED_PLAYLIST"
                 echo "./$file" >>"$UNSORTED_PLAYLIST"
                 ID=$(($ID + 1))
