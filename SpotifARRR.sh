@@ -65,7 +65,7 @@ while IFS= read -r LINE; do
         echo "
 $NAME
 "
-        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file --download-real-time 2>&1 | tee /dev/tty)"
+        ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file 2>&1 | tee /dev/tty)"
         ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '(Skipping|Downloaded) ".+' | awk '{$1=$1};1')"
         PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
         echo "#EXTM3U" >"$PLAYLIST_FILE"
