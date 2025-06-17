@@ -122,3 +122,10 @@ for playlist in *.m3u; do
         fi
     done
 done
+
+# Clean up auto-generated empty m3u8 files
+for playlist in *.m3u; do
+    if [ -f "${playlist%.*}.m3u8" ] && [ "$(cat "${playlist%.*}.m3u8")" = "#EXTM3U" ]; then
+        rm "${playlist%.*}.m3u8"
+    fi
+done
