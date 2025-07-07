@@ -53,7 +53,7 @@ if [ "$NODE_EXIT_CODE" != 0 ]; then
     exit "$NODE_EXIT_CODE"
 fi
 
-# Download each playlist into the target directory (existing songs are skipped) and generate a corresponding list of songs in a text file ('M3U')
+# Download each playlist into the target directory (existing songs are skipped) and generate a corresponding list of songs in a text file ('M3U8')
 mkdir -p "$DEST_DIR"
 cd "$DEST_DIR"
 
@@ -67,7 +67,7 @@ $NAME
 "
         ZOTIFY_OUTPUT="$(zotify https://open.spotify.com/playlist/"$ID" -o "$DEST_DIR"/'{artist} - {track}' --print-downloads --skip-duplicates --print-skips --lyrics-file 2>&1 | tee /dev/tty)"
         ZOTIFY_OUTPUT="$(echo "$ZOTIFY_OUTPUT" | grep -Eo '(Skipping|Downloaded) ".+' | awk '{$1=$1};1')"
-        PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u
+        PLAYLIST_FILE="$DEST_DIR"/"$NAME".m3u8
         echo "#EXTM3U" >"$PLAYLIST_FILE"
         SKIP_REGEX="^Skipping \".*\": Previously downloaded"
         DL_REGEX="^Downloaded"
@@ -90,9 +90,13 @@ done <<<"$PLAYLISTS"
 
 # For any song files that don't appear in at least one playlist, add it to an unsorted playlist or remove it
 echo ""
-UNSORTED_PLAYLIST="$DEST_DIR"/SpotifARRR_Unsorted.m3u
+UNSORTED_PLAYLIST="$DEST_DIR"/SpotifARRR_Unsorted.m3u8
+PREV_UNSORTED_COUNT=0
+if [ -f "$UNSORTED_PLAYLIST" ]; then
+    PREV_UNSORTED_COUNT="$(cat "$UNSORTED_PLAYLIST" | grep -E '^#EXTINF:' | wc -l)"
+fi
 echo "#EXTM3U" >"$UNSORTED_PLAYLIST"
-ALL_SONGS="$(cat *.m3u | grep --text '^\./')"
+ALL_SONGS="$(cat *.m3u8 | grep --text '^\./')"
 ID=1
 for file in *.ogg; do
     regex_escaped_file="$(awk '{gsub(/[\[\]\\^$.|*+?(){}]/, "\\\\&"); print}' <<<"$file")"
@@ -113,19 +117,14 @@ for file in *.ogg; do
         fi
     fi
 done
+NEW_UNSORTED_COUNT="$(cat "$UNSORTED_PLAYLIST" | grep -E '^#EXTINF:' | wc -l)"
+echo "Number of unsorted songs was $PREV_UNSORTED_COUNT, is now $NEW_UNSORTED_COUNT."
 
 # Verify that there are no non-existent files referenced in any playlists
-for playlist in *.m3u; do
+for playlist in *.m3u8; do
     cat "$playlist" | grep --text '^\./' | while read song; do
         if [ ! -f "$song" ]; then
             echo "NON-EXISTENT SONG: $song (IN PLAYLIST: $playlist)"
         fi
     done
-done
-
-# Clean up auto-generated empty m3u8 files
-for playlist in *.m3u; do
-    if [ -f "${playlist%.*}.m3u8" ] && [ "$(cat "${playlist%.*}.m3u8")" = "#EXTM3U" ]; then
-        rm "${playlist%.*}.m3u8"
-    fi
 done
