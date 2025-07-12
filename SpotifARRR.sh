@@ -2,7 +2,7 @@
 set -e
 
 # Ensure dependencies
-for dep in node zotify; do
+for dep in node zotify exiftool; do
     if [ -z "$(which "$dep")" ]; then
         echo "Dependency not found: "$dep"" >&2
         exit 1
@@ -43,7 +43,9 @@ trap 'onExit' EXIT
 
 # Get all user playlists (including private ones)
 cd "$SCRIPT_DIR"
-PLAYLISTS="$(node "$SCRIPT_DIR"/get_all_playlist_ids.js)"
+ACCESS_TOKEN="$(node "$SCRIPT_DIR"/spotify_data.js authenticate)"
+HAS_PREMIUM="$(node "$SCRIPT_DIR"/spotify_data.js checkPremium "$ACCESS_TOKEN")"
+PLAYLISTS="$(node "$SCRIPT_DIR"/spotify_data.js getPlaylists "$ACCESS_TOKEN")"
 if [ -f "$SCRIPT_DIR"/ADDITIONAL_PLAYLISTS.txt ]; then
     PLAYLISTS="$PLAYLISTS
 $(cat "$SCRIPT_DIR"/ADDITIONAL_PLAYLISTS.txt)"
@@ -53,11 +55,44 @@ if [ "$NODE_EXIT_CODE" != 0 ]; then
     exit "$NODE_EXIT_CODE"
 fi
 
-# Download each playlist into the target directory (existing songs are skipped) and generate a corresponding list of songs in a text file ('M3U8')
+# Prep dest dir
 mkdir -p "$DEST_DIR"
 cd "$DEST_DIR"
 
-set -e
+# If you have premium, low bitrate files are deleted (moved to a subdir) first so that they can be re-downloaded
+# At the end if a new file has not appeared to replace the moved one, it will be moved back
+MOVED_ITEMS=()
+if [ "$HAS_PREMIUM" == true ]; then
+    for file in *.ogg; do
+        FILE_BITRATE="$(exiftool -nominalbitrate "$file" | awk '{print $4}')"
+        if [ "$FILE_BITRATE" -lt 320 ]; then
+            mkdir -p ./low_bitrate
+            echo "File has low bitrate, it will be moved into the low_bitrate folder: $file"
+            mv "$file" ./low_bitrate
+            MOVED_ITEMS+=("$files")
+        fi
+    done
+fi
+
+# Restore moved low-bitrate files that were not replaced
+restoreLowBitrateFiles() {
+    echo ''
+    cd "$DEST_DIR"
+    if [ -d ./low_bitrate ] && [ "$(ls ./low_bitrate | wc -l)" -gt 0 ]; then
+        for filePath in ./low_bitrate/*; do
+            file="$(basename "$filePath")"
+            if [ ! -f "$file" ]; then
+                echo "Low bitrate file was not replaced, it will be restored: $file"
+                mv ./low_bitrate/"$file" .
+            fi
+        done
+    fi
+    rmdir ./low_bitrate 2>/dev/null || :
+}
+# Ensure it runs even when crashed
+trap 'restoreLowBitrateFiles; onExit' EXIT
+
+# Download each playlist into the target directory (existing songs are skipped) and generate a corresponding list of songs in a text file ('M3U8')
 while IFS= read -r LINE; do
     ID="$(echo "$LINE" | awk '{print $1}')"
     NAME="$(echo "$LINE" | awk '{$1=""; print $0}' | awk '{$1=$1};1')"
@@ -87,6 +122,8 @@ $NAME
         done < <(echo "$ZOTIFY_OUTPUT")
     fi
 done <<<"$PLAYLISTS"
+
+restoreLowBitrateFiles
 
 # For any song files that don't appear in at least one playlist, add it to an unsorted playlist or remove it
 echo ""
